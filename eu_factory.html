@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>EU Factory Map</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      height: 100vh;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      margin: 6px 0;
+      padding: 6px;
+      border: none;
+      background-color: #2c7be5;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .btn:hover {
+      background-color: #1a5dc9;
+    }
+
+    .back-btn {
+      background-color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    // 1️⃣ 지도 생성
+    const map = L.map("map").setView([50, 15], 5);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap"
+    }).addTo(map);
+
+    // 2️⃣ 공장 데이터
+    const factories = [
+      { country: "Czech Republic", lat: 49.8175, lng: 15.4730 },
+      { country: "Slovakia", lat: 48.6690, lng: 19.6990 },
+      { country: "Germany", lat: 51.1657, lng: 10.4515 },
+      { country: "Poland", lat: 52.2370, lng: 21.0175 }
+    ];
+
+    const factoryList = ["Factory 1", "Factory 2", "Factory 3", "Factory 4", "Factory 5"];
+    const years = [2024, 2025, 2026];
+
+    // 3️⃣ 핀 생성
+    factories.forEach(factory => {
+      const marker = L.marker([factory.lat, factory.lng]).addTo(map);
+      marker.on("click", () => {
+        showFactoryList(marker, factory.country);
+      });
+    });
+
+    // 4️⃣ 공장 리스트 표시
+    function showFactoryList(marker, country) {
+      const buttons = factoryList
+        .map(
+          f =>
+            `<button class="btn" onclick="showYears('${country}', '${f}')">${f}</button>`
+        )
+        .join("");
+
+      const popupContent = `
+        <strong>${country}</strong><br/>
+        <span>Select Factory</span>
+        ${buttons}
+      `;
+
+      marker.bindPopup(popupContent).openPopup();
+    }
+
+    // 5️⃣ 년도 표시
+    function showYears(country, factoryName) {
+      const yearButtons = years
+        .map(
+          y =>
+            `<button class="btn" onclick="selectYear('${country}', '${factoryName}', ${y})">${y}</button>`
+        )
+        .join("");
+
+      const popupContent = `
+        <strong>${country}</strong><br/>
+        <strong>${factoryName}</strong><br/>
+        <span>Select Year</span>
+        ${yearButtons}
+        <button class="btn back-btn" onclick="goBack('${country}')">← Back</button>
+      `;
+
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer.getPopup()?.isOpen()) {
+          layer.setPopupContent(popupContent);
+        }
+      });
+    }
+
+    // 6️⃣ 뒤로 가기
+    function goBack(country) {
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer.getPopup()?.isOpen()) {
+          showFactoryList(layer, country);
+        }
+      });
+    }
+
+    // 7️⃣ 최종 선택
+    function selectYear(country, factoryName, year) {
+      alert(`${country} / ${factoryName} / ${year} 선택됨`);
+      // 👉 여기서 실제 데이터 연결 가능
+    }
+  </script>
+
+</body>
+</html>
