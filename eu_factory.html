@@ -2,22 +2,13 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>EU Factory Map</title>
+  <title>EU Factory Project Map</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-    }
-
-    #map {
-      height: 100vh;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #map { height: 100vh; }
 
     .btn {
       display: block;
@@ -30,107 +21,194 @@
       cursor: pointer;
       border-radius: 4px;
       font-size: 13px;
+      text-align: left;
     }
 
-    .btn:hover {
-      background-color: #1a5dc9;
-    }
-
-    .back-btn {
-      background-color: #6c757d;
-    }
+    .btn:hover { background-color: #1a5dc9; }
+    .back-btn { background-color: #6c757d; }
   </style>
 </head>
 <body>
 
-  <div id="map"></div>
+<div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <script>
-    // 1️⃣ 지도 생성
-    const map = L.map("map").setView([50, 15], 5);
+<script>
+/* ===============================
+   1️⃣ 지도
+=============================== */
+const map = L.map("map").setView([50, 15], 5);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap"
-    }).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap"
+}).addTo(map);
 
-    // 2️⃣ 공장 데이터
-    const factories = [
-      { country: "Czech Republic", lat: 49.8175, lng: 15.4730 },
-      { country: "Slovakia", lat: 48.6690, lng: 19.6990 },
-      { country: "Germany", lat: 51.1657, lng: 10.4515 },
-      { country: "Poland", lat: 52.2370, lng: 21.0175 }
-    ];
+/* ===============================
+   2️⃣ 국가 / 공장 / 년도 / 프로젝트 데이터
+=============================== */
+const countries = {
+  "Czech Republic": [49.8175, 15.4730],
+  "Slovakia": [48.6690, 19.6990],
+  "Germany": [51.1657, 10.4515],
+  "Poland": [52.2370, 21.0175]
+};
 
-    const factoryList = ["Factory 1", "Factory 2", "Factory 3", "Factory 4", "Factory 5"];
-    const years = [2024, 2025, 2026];
+const factories = ["Factory 1", "Factory 2", "Factory 3", "Factory 4", "Factory 5"];
+const years = [2024, 2025, 2026];
 
-    // 3️⃣ 핀 생성
-    factories.forEach(factory => {
-      const marker = L.marker([factory.lat, factory.lng]).addTo(map);
-      marker.on("click", () => {
-        showFactoryList(marker, factory.country);
-      });
-    });
+const projectData = {
+  "Poland": {
+    "2024": [
+      {
+        name: "말라세비체",
+        ppt: "ppt/malaszewicze_2024.pptx"
+      },
+      {
+        name: "T/P",
+        ppt: "ppt/tp_2024.pptx"
+      }
+    ]
+  }
+};
 
-    // 4️⃣ 공장 리스트 표시
-    function showFactoryList(marker, country) {
-      const buttons = factoryList
-        .map(
-          f =>
-            `<button class="btn" onclick="showYears('${country}', '${f}')">${f}</button>`
-        )
-        .join("");
+/* ===============================
+   3️⃣ 마커 생성
+=============================== */
+Object.entries(countries).forEach(([country, coord]) => {
+  const marker = L.marker(coord).addTo(map);
+  const popup = L.popup({ closeOnClick: false });
+  marker.bindPopup(popup);
 
-      const popupContent = `
-        <strong>${country}</strong><br/>
-        <span>Select Factory</span>
-        ${buttons}
-      `;
+  // 핀 클릭 시 항상 초기화
+  marker.on("click", () => {
+    popup.setContent(factoryHTML(country, marker._leaflet_id));
+    marker.openPopup();
+  });
+});
 
-      marker.bindPopup(popupContent).openPopup();
+/* ===============================
+   4️⃣ 공장 리스트
+=============================== */
+function factoryHTML(country, markerId) {
+  return `
+    <strong>${country}</strong><br/>
+    <div>Select Factory</div>
+    ${factories.map(f =>
+      `<button class="btn"
+        onclick="openYears(event, '${country}', '${f}', ${markerId})">
+        ${f}
+      </button>`
+    ).join("")}
+  `;
+}
+
+/* ===============================
+   5️⃣ 년도 리스트
+=============================== */
+function yearHTML(country, factory, markerId) {
+  return `
+    <strong>${country}</strong><br/>
+    <strong>${factory}</strong><br/>
+    <div>Select Year</div>
+    ${years.map(y =>
+      `<button class="btn"
+        onclick="openProjects(event, '${country}', '${factory}', ${y}, ${markerId})">
+        ${y}
+      </button>`
+    ).join("")}
+    <button class="btn back-btn"
+      onclick="backToFactory(event, '${country}', ${markerId})">
+      ← Back
+    </button>
+  `;
+}
+
+/* ===============================
+   6️⃣ 프로젝트 리스트
+=============================== */
+function projectHTML(country, factory, year, markerId) {
+  const projects = projectData?.[country]?.[year] || [];
+
+  if (projects.length === 0) {
+    return `
+      <strong>${country}</strong><br/>
+      <strong>${factory}</strong><br/>
+      <strong>${year}</strong><br/>
+      <div>No projects</div>
+      <button class="btn back-btn"
+        onclick="backToYear(event, '${country}', '${factory}', ${markerId})">
+        ← Back
+      </button>
+    `;
+  }
+
+  return `
+    <strong>${country}</strong><br/>
+    <strong>${factory}</strong><br/>
+    <strong>${year}</strong><br/>
+    <div>Select Project</div>
+    ${projects.map(p =>
+      `<button class="btn"
+        onclick="openPPT(event, '${p.ppt}')">
+        📊 ${p.name}
+      </button>`
+    ).join("")}
+    <button class="btn back-btn"
+      onclick="backToYear(event, '${country}', '${factory}', ${markerId})">
+      ← Back
+    </button>
+  `;
+}
+
+/* ===============================
+   7️⃣ 네비게이션 함수들
+=============================== */
+function openYears(e, country, factory, markerId) {
+  e.stopPropagation();
+  findMarker(markerId).getPopup()
+    .setContent(yearHTML(country, factory, markerId));
+}
+
+function openProjects(e, country, factory, year, markerId) {
+  e.stopPropagation();
+  findMarker(markerId).getPopup()
+    .setContent(projectHTML(country, factory, year, markerId));
+}
+
+function backToFactory(e, country, markerId) {
+  e.stopPropagation();
+  findMarker(markerId).getPopup()
+    .setContent(factoryHTML(country, markerId));
+}
+
+function backToYear(e, country, factory, markerId) {
+  e.stopPropagation();
+  findMarker(markerId).getPopup()
+    .setContent(yearHTML(country, factory, markerId));
+}
+
+/* ===============================
+   8️⃣ PPT 열기
+=============================== */
+function openPPT(e, url) {
+  e.stopPropagation();
+  window.open(url, "_blank");
+}
+
+/* ===============================
+   9️⃣ 마커 찾기
+=============================== */
+function findMarker(id) {
+  let result;
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker && layer._leaflet_id === id) {
+      result = layer;
     }
-
-    // 5️⃣ 년도 표시
-    function showYears(country, factoryName) {
-      const yearButtons = years
-        .map(
-          y =>
-            `<button class="btn" onclick="selectYear('${country}', '${factoryName}', ${y})">${y}</button>`
-        )
-        .join("");
-
-      const popupContent = `
-        <strong>${country}</strong><br/>
-        <strong>${factoryName}</strong><br/>
-        <span>Select Year</span>
-        ${yearButtons}
-        <button class="btn back-btn" onclick="goBack('${country}')">← Back</button>
-      `;
-
-      map.eachLayer(layer => {
-        if (layer instanceof L.Marker && layer.getPopup()?.isOpen()) {
-          layer.setPopupContent(popupContent);
-        }
-      });
-    }
-
-    // 6️⃣ 뒤로 가기
-    function goBack(country) {
-      map.eachLayer(layer => {
-        if (layer instanceof L.Marker && layer.getPopup()?.isOpen()) {
-          showFactoryList(layer, country);
-        }
-      });
-    }
-
-    // 7️⃣ 최종 선택
-    function selectYear(country, factoryName, year) {
-      alert(`${country} / ${factoryName} / ${year} 선택됨`);
-      // 👉 여기서 실제 데이터 연결 가능
-    }
-  </script>
+  });
+  return result;
+}
+</script>
 
 </body>
 </html>
